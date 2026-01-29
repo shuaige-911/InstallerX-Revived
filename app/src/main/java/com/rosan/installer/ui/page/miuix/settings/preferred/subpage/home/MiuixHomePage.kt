@@ -1,5 +1,10 @@
 package com.rosan.installer.ui.page.miuix.settings.preferred.subpage.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,16 +39,19 @@ import com.rosan.installer.build.model.entity.Level
 import com.rosan.installer.ui.page.main.settings.preferred.PreferredViewAction
 import com.rosan.installer.ui.page.main.settings.preferred.PreferredViewEvent
 import com.rosan.installer.ui.page.main.settings.preferred.PreferredViewModel
+import com.rosan.installer.ui.page.main.widget.setting.LogEventCollector
 import com.rosan.installer.ui.page.miuix.settings.MiuixSettingsScreen
 import com.rosan.installer.ui.page.miuix.widgets.ErrorDisplaySheet
 import com.rosan.installer.ui.page.miuix.widgets.MiuixBackButton
 import com.rosan.installer.ui.page.miuix.widgets.MiuixNavigationItemWidget
+import com.rosan.installer.ui.page.miuix.widgets.MiuixSwitchWidget
 import com.rosan.installer.ui.page.miuix.widgets.MiuixUpdateDialog
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
+import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -87,6 +95,8 @@ fun MiuixHomePage(
     val showLoadingDialog = remember { mutableStateOf(false) }
     val showUpdateErrorDialog = remember { mutableStateOf(false) }
     var updateErrorInfo by remember { mutableStateOf<PreferredViewEvent.ShowInAppUpdateErrorDetail?>(null) }
+
+    LogEventCollector(viewModel)
 
     LaunchedEffect(Unit) {
         viewModel.uiEvents.collect { event ->
@@ -136,11 +146,8 @@ fun MiuixHomePage(
                 .scrollEndHaptic()
                 .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .padding(top = paddingValues.calculateTopPadding()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(top = paddingValues.calculateTopPadding() + 48.dp)
         ) {
-            item { Spacer(modifier = Modifier.size(48.dp)) }
-
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -204,6 +211,32 @@ fun MiuixHomePage(
                             description = stringResource(R.string.get_update_directly_desc),
                             onClick = { viewModel.dispatch(PreferredViewAction.Update) }
                         )
+                }
+            }
+            item { SmallTitle(stringResource(R.string.debug)) }
+            item {
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp)
+                ) {
+                    MiuixSwitchWidget(
+                        title = stringResource(R.string.save_logs),
+                        description = stringResource(R.string.save_logs_desc),
+                        checked = viewModel.state.enableFileLogging,
+                        onCheckedChange = { viewModel.dispatch(PreferredViewAction.SetEnableFileLogging(it)) }
+                    )
+                    AnimatedVisibility(
+                        visible = viewModel.state.enableFileLogging,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        BasicComponent(
+                            title = stringResource(R.string.export_logs),
+                            summary = stringResource(R.string.export_logs_desc),
+                            onClick = { viewModel.dispatch(PreferredViewAction.ShareLog) }
+                        )
+                    }
                 }
             }
         }

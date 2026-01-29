@@ -22,6 +22,9 @@ class FileLoggingTree(context: Context) : Timber.DebugTree() {
     private val backgroundHandler: Handler
     private var currentLogFile: File? = null
 
+    // Create a property for HandlerThread to access it later for quitting
+    private val handlerThread: HandlerThread
+
     // Formatter for file names (e.g., "2025-01-29_14-00-00.log")
     private val fileNameDateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
 
@@ -41,7 +44,7 @@ class FileLoggingTree(context: Context) : Timber.DebugTree() {
         }
 
         // Initialize a background thread for file I/O operations to prevent UI blocking
-        val handlerThread = HandlerThread("AndroidFileLogger.Thread")
+        handlerThread = HandlerThread("AndroidFileLogger.Thread")
         handlerThread.start()
         backgroundHandler = Handler(handlerThread.looper)
 
@@ -56,6 +59,19 @@ class FileLoggingTree(context: Context) : Timber.DebugTree() {
         // Post the writing task to the background thread
         backgroundHandler.post {
             doLog(priority, tag, message, t)
+        }
+    }
+
+    /**
+     * Releases resources when the tree is uprooted.
+     * Stops the background thread to prevent leaks.
+     */
+    fun release() {
+        try {
+            backgroundHandler.removeCallbacksAndMessages(null)
+            handlerThread.quitSafely()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to release FileLoggingTree resources", e)
         }
     }
 
@@ -157,7 +173,7 @@ class FileLoggingTree(context: Context) : Timber.DebugTree() {
      */
     private fun cleanOldLogFiles() {
         try {
-            val files = logDir.listFiles { _, name -> name.endsWith(".log") } ?: return
+            val files = logDir.listFiles { _, name -> name.endsWith(LOG_SUFFIX) } ?: return
 
             if (files.size > MAX_LOG_FILES) {
                 // Sort by last modified (descending) and remove the oldest ones
@@ -197,5 +213,6 @@ class FileLoggingTree(context: Context) : Timber.DebugTree() {
         private const val MAX_FILE_SIZE = 2 * 1024 * 1024L
 
         const val LOG_DIR_NAME = "logs"
+        const val LOG_SUFFIX = ".log"
     }
 }

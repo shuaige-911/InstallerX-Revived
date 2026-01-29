@@ -1127,3 +1127,13 @@ fun UninstallRequireBiometricAuthWidget(viewModel: PreferredViewModel, isM3E: Bo
         )
     }
 }
+
+@Composable
+fun ExportLogsWidget(viewModel: PreferredViewModel) {
+    BaseWidget(
+        icon = AppIcons.BugReport,
+        title = stringResource(R.string.export_logs),
+        description = stringResource(R.string.export_logs_desc),
+        onClick = { viewModel.dispatch(PreferredViewAction.ShareLog) }
+    ) {}
+}

@@ -1,6 +1,5 @@
 package com.rosan.installer.ui.page.main.settings.preferred.subpage.home
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.rosan.installer.R
+import com.rosan.installer.build.RsConfig
 import com.rosan.installer.ui.icons.AppIcons
 import com.rosan.installer.ui.page.main.settings.SettingsScreen
 import com.rosan.installer.ui.page.main.settings.preferred.PreferredViewAction
@@ -41,8 +41,11 @@ import com.rosan.installer.ui.page.main.settings.preferred.PreferredViewModel
 import com.rosan.installer.ui.page.main.widget.card.StatusWidget
 import com.rosan.installer.ui.page.main.widget.setting.AppBackButton
 import com.rosan.installer.ui.page.main.widget.setting.BottomSheetContent
+import com.rosan.installer.ui.page.main.widget.setting.ExportLogsWidget
+import com.rosan.installer.ui.page.main.widget.setting.LogEventCollector
 import com.rosan.installer.ui.page.main.widget.setting.SettingsNavigationItemWidget
 import com.rosan.installer.ui.page.main.widget.setting.SplicedColumnGroup
+import com.rosan.installer.ui.page.main.widget.setting.SwitchWidget
 import com.rosan.installer.ui.page.main.widget.setting.UpdateLoadingIndicator
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
@@ -53,10 +56,14 @@ fun NewHomePage(
     navController: NavController,
     viewModel: PreferredViewModel
 ) {
+
     val hazeState = remember { HazeState() }
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
     val uriHandler = LocalUriHandler.current
+    var showBottomSheet by remember { mutableStateOf(false) }
+
+    LogEventCollector(viewModel)
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -90,14 +97,11 @@ fun NewHomePage(
                 )
             },
         ) { paddingValues ->
-            var showBottomSheet by remember { mutableStateOf(false) }
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = paddingValues.calculateTopPadding()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 item {
                     Box(
@@ -145,20 +149,37 @@ fun NewHomePage(
                             }
                     }
                 }
-                if (showBottomSheet) {
+                if (RsConfig.isLogEnabled)
                     item {
-                        ModalBottomSheet(onDismissRequest = { showBottomSheet = false }) {
-                            BottomSheetContent(
-                                title = stringResource(R.string.get_update),
-                                hasUpdate = viewModel.state.hasUpdate,
-                                onDirectUpdateClick = {
-                                    showBottomSheet = false
-                                    viewModel.dispatch(PreferredViewAction.Update)
-                                }
-                            )
+                        SplicedColumnGroup(
+                            title = stringResource(R.string.debug)
+                        ) {
+                            item {
+                                SwitchWidget(
+                                    icon = AppIcons.BugReport,
+                                    title = stringResource(R.string.save_logs),
+                                    description = stringResource(R.string.save_logs_desc),
+                                    checked = viewModel.state.enableFileLogging,
+                                    onCheckedChange = { viewModel.dispatch(PreferredViewAction.SetEnableFileLogging(it)) }
+                                )
+                            }
+                            item(visible = viewModel.state.enableFileLogging) {
+                                ExportLogsWidget(viewModel)
+                            }
                         }
                     }
-                }
+            }
+        }
+        if (showBottomSheet) {
+            ModalBottomSheet(onDismissRequest = { showBottomSheet = false }) {
+                BottomSheetContent(
+                    title = stringResource(R.string.get_update),
+                    hasUpdate = viewModel.state.hasUpdate,
+                    onDirectUpdateClick = {
+                        showBottomSheet = false
+                        viewModel.dispatch(PreferredViewAction.Update)
+                    }
+                )
             }
         }
         UpdateLoadingIndicator(hazeState = hazeState, viewModel = viewModel)
